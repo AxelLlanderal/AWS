@@ -7,13 +7,11 @@ const searchCountryBtn = document.getElementById('searchCountryBtn');
 // Referencias a la tabla
 const recordsTable = document.getElementById('records');
 
-// Mostrar registros de la tabla "country"
-// Ajusta las rutas para que apunten a '../getRecords.php'
-
 // Limpiar los registros
 function clearRecords() {
-    recordsTable.innerHTML = '';
+    recordsTable.innerHTML = '';
 }
+
 // Buscar país por nombre y mostrar los registros de las tres tablas relacionadas
 searchCountryBtn.addEventListener('click', () => {
     const countryName = prompt("Ingresa el nombre del país que deseas buscar:");
@@ -23,7 +21,7 @@ searchCountryBtn.addEventListener('click', () => {
     }
 
     clearRecords();
-    axios.get(`//3.82.45.68 /php-intro-connection/getRecords.php?search=${countryName}`)
+    axios.get(`//3.85.4.237/getRecords.php?search=${encodeURIComponent(countryName)}`)
         .then(response => {
             const data = response.data;
             console.log(data);
@@ -36,30 +34,43 @@ searchCountryBtn.addEventListener('click', () => {
         });
 });
 
-
 // Mostrar registros de la tabla "country"
-// Mostrar registros de la tabla country
-countryBtn.addEventListener('click', () => {
- 
+countryBtn.addEventListener('click', async () => {
     clearRecords();
-    axios.get('//3.82.45.68 /php-intro-connection/getRecords.php?table=country')
-        .then(response => {
-            console.log(response.data);  // Verifica la estructura de los datos en la consola
-            const data = Array.isArray(response.data) ? response.data : response.data.country || [];
-            populateTable(data, ['Code', 'Name', 'Continent', 'Region', 'Population'], 'Países');
-        })
-        .catch(error => {
-            console.error(error);
-        });
+    try {
+        // Paso 1: Llama a index.php para obtener el código de país basado en la IP
+        const ipResponse = await axios.get('//3.85.4.237/geolocation/index.php');
+        const countryCode3 = ipResponse.data.country_code3;
+
+        console.log('Código de país obtenido:', countryCode3); // Verifica el código de país
+
+        if (countryCode3) {
+            // Paso 2: Usa el código de país obtenido en la solicitud a getRecords.php
+            const response = await axios.get(`//3.85.4.237/geolocation/getRecords.php?table=country&country_code3=${countryCode3}`);
+            console.log('Respuesta de países filtrada:', response.data);  // Verifica la estructura de los datos en la consola
+
+            // Poblamos la tabla solo con los registros filtrados
+            const data = Array.isArray(response.data) ? response.data : [];
+            // Poblamos la tabla solo con los registros filtrados
+            if (data.length > 0) {
+                populateTable(data, ['Code', 'Name', 'Continent', 'Region', 'Population'], 'Países');
+            } else {
+                alert("No se encontraron registros para el país correspondiente.");
+            }
+        } else {
+            console.error("El country_code3 no está definido.");
+        }
+    } catch (error) {
+        console.error("Error al obtener los datos de países filtrados:", error);
+    }
 });
 
-// Mostrar registros de la tabla city
+// Mostrar registros de la tabla "city"
 cityBtn.addEventListener('click', () => {
-
     clearRecords();
-    axios.get('//3.82.45.68 /php-intro-connection/getRecords.php?table=city')
+    axios.get('//3.85.4.237/getRecords.php?table=city')
         .then(response => {
-            console.log(response.data);  // Verifica la estructura de los datos en la consola
+            console.log(response.data);
             const data = Array.isArray(response.data) ? response.data : response.data.city || [];
             populateTable(data, ['ID', 'Name', 'CountryCode', 'District', 'Population'], 'Ciudades');
         })
@@ -68,13 +79,12 @@ cityBtn.addEventListener('click', () => {
         });
 });
 
-// Mostrar registros de la tabla countrylanguage
+// Mostrar registros de la tabla "countrylanguage"
 countryLanguageBtn.addEventListener('click', () => {
-
     clearRecords();
-    axios.get('//3.82.45.68 /php-intro-connection/getRecords.php?table=countrylanguage')
+    axios.get('//3.85.4.237/getRecords.php?table=countrylanguage')
         .then(response => {
-            console.log(response.data);  // Verifica la estructura de los datos en la consola
+            console.log(response.data);
             const data = Array.isArray(response.data) ? response.data : response.data.countrylanguage || [];
             populateTable(data, ['CountryCode', 'Language', 'IsOfficial', 'Percentage'], 'Lenguajes por País');
         })
@@ -83,7 +93,7 @@ countryLanguageBtn.addEventListener('click', () => {
         });
 });
 
-// tabla con los datos 
+// Función para poblar la tabla con datos
 function populateTable(data, columns, tableTitle = '') {
     // Limpiar el contenido anterior del cuerpo de la tabla
     recordsTable.innerHTML = '';
@@ -108,7 +118,7 @@ function populateTable(data, columns, tableTitle = '') {
         const row = document.createElement('tr');
         columns.forEach(col => {
             const td = document.createElement('td');
-            td.textContent = item[col] !== undefined && item[col] !== null ? item[col] : 'N/A';  // Manejar valores nulos
+            td.textContent = item[col] !== undefined ? item[col] : '';  // Verifica si el valor existe
             row.appendChild(td);
         });
         recordsTable.appendChild(row);
